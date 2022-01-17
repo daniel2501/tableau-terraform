@@ -1,0 +1,89 @@
+
+# Vars
+
+# Tableau Server
+ts_vars:
+  # TODO: Remove 'ts_' from variable names.
+  ts_download_url_path: "https://downloads.tableau.com/esdalt/2021.4.2/"
+  ts_file_name: "tableau-server-2021-4-2_amd64.deb"
+  ts_version: "2021-4-2"
+  # Build number in deb package name and scripts directory differ. In the scripts directory name, the dash is replaced with a dot.
+  ts_build_number: "20214.21.1217.2252"
+  tsm_path_prefix: "/opt/tableau/tableau_server/packages/bin."
+  os_user_password: "ubuntu_pass"
+  # TODO: finish registration setup and use template file for reg.json.
+  ts_registration:
+    - first_name: "Daniel"
+  # TODO: Add function in shell script to activate license keys.
+  license_keys:
+    - "TSAB-CDEF-GHIJ-KLMN-OPQR-STUV"
+    - "TSBB-CDEF-GHIJ-KLMN-OPQR-STUV"
+    - "TSCB-CDEF-GHIJ-KLMN-OPQR-STUV"
+  # TODO: Add logic to activate a trial. Currently hard coding a trial.
+  activate_trial: true
+  initial_user_username: "tableau-admin"
+  initial_user_password: "ubuntupass"
+
+# Terraform
+tf_vars:
+  # Functions / config scenarios
+  # Which modules to run:
+  run_base: true
+  run_cluster: true
+  run_eip: true
+  associate_instance: true
+  run_install_tableau_server: true
+  run_ssl: true
+  # Scenario: generate an EIP only, so that dns can associate it with an existing domain hosted externally from AWS.
+  imported_eip_name: "eip_id" # To import an EIP that already exists in this AWS account.
+
+  # Terraform config
+  region: "us-east-1"
+  # TODO: Using a manually created local key file for now. Either create one with a local script, or use KMS.
+  public_key_file_name: "key.pub"
+  private_key_file_name: "key"
+# Port config should be in a separate file, and callable by configuration scenario.
+  ports:
+    - name: SSH
+      from_port: 22
+      to_port: 22
+      protocol: "tcp"
+      cidr_blocks: ["0.0.0.0/0"]
+    - name: HTTPS
+      form_port: 443
+      to_port: 443
+      protocol: "tcp"
+      cidr_blocks: ["0.0.0.0/0"]
+    - name: "HTTP"
+      form_port: 80
+      to_port: 80
+      protocol: "tcp"
+      cidr_blocks: ["0.0.0.0/0"]
+    - name: "TSM"
+      form_port: 8850
+      to_port: 8850
+      protocol: "tcp"
+      cidr_blocks: ["0.0.0.0/0"]
+    - name: "wide_open"
+      form_port: 0
+      to_port: 0
+      protocol: "-1"
+      cidr_blocks: ["0.0.0.0/0"]
+
+  cluster_size: 1
+  ami_id: "ami-02fe94dee086c0c37"
+  instance_type: "t2.2xlarge"
+  tags:
+    - name: "ubuntu"
+  hdd:
+    volume_size_in_gb: 200
+    device_name: "/dev/sda1"
+    volume_type: "gp2"
+  os_username: "ubuntu"
+
+# SSL
+ssl_vars:
+  cb_ssl_email: "daniel2501@gmail.com"
+  install_certbot: true
+  ts_url: "tableau-dev.tk"
+  ts_webroot: "/var/opt/tableau/tableau_server/data/tabsvc/httpd/htdocs"

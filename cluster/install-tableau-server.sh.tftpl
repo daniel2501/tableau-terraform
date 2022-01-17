@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+
+prepare_env() {
+    # Download the .deb package
+    echo "Downloading Tableau Server ${ts_version}"
+    wget ${ts_download_url}
+    # Create password for ubuntu user.
+    echo "Creating a password for the ubuntu user"
+    echo -e "$OS_USER_PASSWORD\n$OS_USER_PASSWORD"| sudo passwd ubuntu
+    # Add the Ubuntu Universe repository, update, get gdebi, and install the Tableau Server package
+    sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) universe"
+    sudo apt-get update
+    sudo apt-get -y install gdebi-core
+    sudo apt-get -y upgrade
+}
+
+
+install_tsm() {
+    sudo gdebi -n tableau-server-${ts_version}_amd64.deb
+    # Initialize TSM
+    cd /opt/tableau/tableau_server/packages/scripts.${ts_build_number}/
+    sudo ./initialize-tsm --accepteula
+    source /etc/profile.d/tableau_server.sh
+    # Activate, register, set initial config, and restart.
+    echo "Activating licenses"
+    %{ if activate_trial }
+      ${tsm_path}/tsm licenses activate -t
+    %{ else }
+      %{ for key in licenses ~}
+        ${tsm_path}/tsm licenses activate -k ${key}
+      %{ endfor ~}
+    %{ endif }
+    echo "Registering Tableau Server"
+    ${tsm_path}/tsm register -f /home/ubuntu/reg.json
+    echo "Applying initial settings"
+    ${tsm_path}/tsm settings import -f /home/ubuntu/initial-tsm-settings.json
+    echo "Setting sample content preference"
+    ${tsm_path}/tsm configuration set -k install.component.samples -v true
+    echo "Applying pending changes"
+    ${tsm_path}/tsm pending-changes apply --ignore-prompt
+    echo "Initializing TSM."
+    ${tsm_path}/tsm initialize --start-server
+    echo "Creating initial admin user."
+    # create initial admin user
+    ${tsm_path}/tabcmd initialuser --server http://localhost --username "${initial_user_username}" --password "$TS_ADMIN_PASSWORD"
+}
+
+
+# Main
+prepare_env
+install_tsm

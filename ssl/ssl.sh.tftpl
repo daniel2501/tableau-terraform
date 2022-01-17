@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+
+set_up_ssl() {
+    # TODO: this will become one of a few functions, one for each distro supported by tableau
+
+    # Create cert directory
+    sudo su -c "mkdir -p /var/opt/tableau/tableau_server/cert/" -l tableau
+
+    %{ if install_certbot }
+    sudo snap install certbot --classic
+    echo "Generating new SSL certs."
+    sudo certbot certonly --webroot -w ${ts_webroot} -d ${ts_url} --agree-tos -m ${cb_ssl_email} --keep-until-expiring --non-interactive
+
+    # Copy new cert files to the Tableau cert dir from certbots's location and apply ownership to the tableau user
+    echo "Copying new cert files to the Tableau cert directory from certbots location, applying ownership to the tableau user, and locking down permissions."
+    sudo install -C -o tableau -g tableau -m 400 /etc/letsencrypt/live/${ts_url}/fullchain.pem /var/opt/tableau/tableau_server/cert/tableau.chn
+    sudo install -C -o tableau -g tableau -m 400 /etc/letsencrypt/live/${ts_url}/privkey.pem /var/opt/tableau/tableau_server/cert/tableau.key
+    sudo install -C -o tableau -g tableau -m 400 /etc/letsencrypt/live/${ts_url}/cert.pem /var/opt/tableau/tableau_server/cert/tableau.crt
+    # Apply new certs and restart the server.
+    %{ else }
+    # Copy pre-loaded certs to Tableau cert directory, and permission them.
+    %{ endif }
+
+    echo "Applying new certs and restarting Tableau Server."
+    sudo su -c "tsm security external-ssl enable --cert-file /var/opt/tableau/tableau_server/cert/tableau.crt --key-file /var/opt/tableau/tableau_server/cert/tableau.key" -l tableau
+    sudo su -c "tsm pending-changes apply" -l tableau
+}
+
+
+set_up_ssl
